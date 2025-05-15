@@ -23,11 +23,25 @@ if (-not $latestCommitMessage) {
 
 $commitMessage = "$jiraTicket - $latestCommitMessage"
 
+# Get all commits unique to this branch (not in dev), one per line: <hash> <message>
+$branchName = git branch --show-current
+$commitList = git log --no-merges --pretty=format:"%s" origin/dev..$branchName
+
+$prDescription = ""
+
+# Format the commits as a bullet list
+if ($commitList) {
+    $commitBullets = $commitList -split "`n" | ForEach-Object { "* $_" }
+    $commitBulletsText = $commitBullets -join "`n"
+    $prDescription += "`n`n### Commits in this branch:`n$commitBulletsText"
+}
+
 # Construct the pull request description (combining Jira ticket and user-provided description)
-$prDescription = "$jiraTicket"
+$prDescription += "$jiraTicket"
 if ($description) {
     $prDescription += " - $description"
 }
+
 
 # Create a pull request using Azure DevOps CLI with auto-complete, squash commits, and optional reviewers
 az repos pr create `
@@ -39,7 +53,6 @@ az repos pr create `
     --title "$commitMessage" `
     --open `
     --delete-source-branch true
-
 
 # Confirm success or handle errors during PR creation
 if ($LASTEXITCODE -eq 0) {
